@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quantum-gate-provider
+  labels:
+    app: quantum-api
+    tier: backend
+spec:
+  replicas: 2  # High Availability: If one pod crashes, the other stays up
+  selector:
+    matchLabels:
+      app: quantum-api
+  template:
+    metadata:
+      labels:
+        app: quantum-api
+    spec:
+      containers:
+      - name: qiskit-engine
+        image: quantum-kube-app:v1
+        imagePullPolicy: Never # Critical for Minikube to use your local build
+        ports:
+        - containerPort: 8080
+        
+        # 1. Resource Management (Vital for Quantum)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi" # Quantum simulations can "leak" memory if not capped
+            cpu: "500m"
+
+        # 2. Health Probes (Self-Healing)
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        env:
+        - name: QUANTUM_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: quantum-api-key
+              key: IBM_TOKEN
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quantum-service
+spec:
+  selector:
+    app: quantum-api
+  ports:
+    - protocol: TCP
+      port: 80       # Port the Service listens on
+      targetPort: 8080 # Port your FastAPI app is actually running on
+  type: NodePort     # Makes the service accessible outside the cluster
