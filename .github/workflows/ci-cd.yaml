@@ -43,10 +43,28 @@ jobs:
         minikube image load quantum-kube-app:test
 
     - name: Deploy to Minikube
+      env:
+        # This securely pulls the secret from GitHub's encrypted vault
+        SUPER_SECRET_TOKEN: ${{ secrets.IBM_QUANTUM_TOKEN }}
       run: |
-        # We use our YAML to deploy to the temporary GitHub cluster
+        # Create the K8s secret using the Environment Variable
+        kubectl create secret generic quantum-api-key --from-literal=IBM_TOKEN=$SUPER_SECRET_TOKEN
+        
+        # Apply your existing infrastructure
         kubectl apply -f argo-templates/quantum-app.yaml
-        kubectl rollout status deployment/quantum-gate-provider --timeout=90s
+        
+        # Wait for the heavy Qiskit pod to initialize
+        kubectl rollout status deployment/quantum-gate-provider --timeout=180s
+        
+    - name: Debug Failure
+      if: failure()
+      run: |
+        echo "Listing all pods..."
+        kubectl get pods
+        echo "Detailed description of the first pod..."
+        kubectl describe pod -l app=quantum-api
+        echo "Checking cluster events..."
+        kubectl get events --sort-by='.metadata.creationTimestamp'
 
     - name: Integration Test
       run: |
