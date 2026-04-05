@@ -74,7 +74,12 @@ jobs:
 
     - name: Integration Test
       run: |
-        # Verify the API is actually responding inside the cluster
-        kubectl get pods
-        # We can use 'kubectl exec' to test the internal endpoint
-        kubectl exec deployment/quantum-gate-provider -- curl -s http://localhost:8080/
+        # Start port-forward in the background
+        kubectl port-forward service/quantum-service 8888:80 &
+        sleep 5 # Giving the tunnel time to open
+        
+        # Use curl from the GitHub Runner (which HAS curl) to hit the tunnel
+        curl -v http://localhost:8888/
+        
+        # Test the quantum endpoint specifically
+        curl -v "http://localhost:8888/run-circuit?qubits=2"
