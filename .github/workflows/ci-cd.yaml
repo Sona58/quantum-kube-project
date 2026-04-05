@@ -1,0 +1,56 @@
+name: Quantum Kube CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies
+      run: |
+        pip install qiskit qiskit-ibm-runtime fastapi uvicorn pytest httpx
+
+    - name: Run Unit Tests
+      # This ensures your quantum logic works before we even think about K8s
+      run: |
+        # We'll create this test file in the next step
+        pytest tests/
+
+    - name: Set up Minikube
+      # This starts a "Virtual" Kubernetes cluster inside the GitHub Runner
+      uses: medyagh/setup-minikube@master
+      with:
+        container-runtime: docker
+        # We enable the metrics-server here too, just like you did locally!
+        addons: metrics-server
+
+    - name: Build and Load Docker Image
+      run: |
+        docker build -t quantum-kube-app:test .
+        minikube image load quantum-kube-app:test
+
+    - name: Deploy to Minikube
+      run: |
+        # We use our YAML to deploy to the temporary GitHub cluster
+        kubectl apply -f quantum-app.yaml
+        kubectl rollout status deployment/quantum-gate-provider --timeout=90s
+
+    - name: Integration Test
+      run: |
+        # Verify the API is actually responding inside the cluster
+        kubectl get pods
+        # We can use 'kubectl exec' to test the internal endpoint
+        kubectl exec deployment/quantum-gate-provider -- curl -s http://localhost:8080/
