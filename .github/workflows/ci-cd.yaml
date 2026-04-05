@@ -39,8 +39,8 @@ jobs:
 
     - name: Build and Load Docker Image
       run: |
-        docker build -t quantum-kube-app:test .
-        minikube image load quantum-kube-app:test
+        docker build -t quantum-kube-app:v1 .
+        minikube image load quantum-kube-app:v1
 
     - name: Deploy to Minikube
       env:
@@ -49,6 +49,9 @@ jobs:
       run: |
         # Create the K8s secret using the Environment Variable
         kubectl create secret generic quantum-api-key --from-literal=IBM_TOKEN=$SUPER_SECRET_TOKEN
+        
+        # Swaps 'v1' for 'test' in your YAML before applying it
+        sed -i 's/quantum-kube-app:v1/quantum-kube-app:test/g' argo-templates/quantum-app.yaml
         
         # Apply your existing infrastructure
         kubectl apply -f argo-templates/quantum-app.yaml
