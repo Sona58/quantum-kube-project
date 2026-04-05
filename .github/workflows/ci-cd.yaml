@@ -45,7 +45,7 @@ jobs:
     - name: Deploy to Minikube
       run: |
         # We use our YAML to deploy to the temporary GitHub cluster
-        kubectl apply -f quantum-app.yaml
+        kubectl apply -f arg-templates/quantum-app.yaml
         kubectl rollout status deployment/quantum-gate-provider --timeout=90s
 
     - name: Integration Test
