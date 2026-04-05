@@ -40,6 +40,7 @@ jobs:
     - name: Build and Load Docker Image
       run: |
         docker build -t quantum-kube-app:test .
+        minikube image load quantum-kube-app:test
         docker build -t quantum-kube-app:v1 .
         minikube image load quantum-kube-app:v1
 
