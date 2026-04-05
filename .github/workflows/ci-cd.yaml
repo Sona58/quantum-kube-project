@@ -27,7 +27,7 @@ jobs:
       # This ensures your quantum logic works before we even think about K8s
       run: |
         # We'll create this test file in the next step
-        pytest tests/
+        PYTHONPATH=. pytest tests/
 
     - name: Set up Minikube
       # This starts a "Virtual" Kubernetes cluster inside the GitHub Runner
